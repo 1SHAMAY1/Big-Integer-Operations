@@ -6,9 +6,15 @@
 
 class BigInteger {
 public:
-    BigInteger();                      // Default constructor
-    BigInteger(const std::string& number);  // From string
-    BigInteger(int number);           // From int
+    BigInteger();
+    BigInteger(const std::string& number);
+    BigInteger(int number);
+
+    // Math operations
+    BigInteger factorial() const;
+    bool isPrime() const;
+    BigInteger abs() const;
+    BigInteger gcd(const BigInteger& other) const;
 
     // Arithmetic operators
     BigInteger operator+(const BigInteger& other) const;
@@ -16,7 +22,7 @@ public:
     BigInteger operator*(const BigInteger& other) const;
     BigInteger operator/(const BigInteger& other) const;
     BigInteger operator%(const BigInteger& other) const;
-    BigInteger operator-() const;     // Unary minus
+    BigInteger operator-() const;
 
     // Comparison operators
     bool operator==(const BigInteger& other) const;
@@ -26,11 +32,14 @@ public:
     bool operator>(const BigInteger& other) const;
     bool operator>=(const BigInteger& other) const;
 
-    // Stream output
+    // Output
     friend std::ostream& operator<<(std::ostream& os, const BigInteger& num);
 
 private:
-    std::vector<int> digits; // Least significant digit first
+    static const long long BASE = 1000000000LL; // 10^9
+    static const int BASE_DIGITS = 9;
+
+    std::vector<long long> blocks;  // Least significant block first
     bool isNegative;
 
     void removeLeadingZeros();
