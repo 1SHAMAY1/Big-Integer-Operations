@@ -12,6 +12,7 @@ public:
 
     // Math operations
     BigInteger factorial() const;
+    std::string factorialProcessString() const;
     bool isPrime() const;
     BigInteger abs() const;
     BigInteger gcd(const BigInteger& other) const;
@@ -46,4 +47,12 @@ private:
     static int compareAbs(const BigInteger& a, const BigInteger& b);
     static BigInteger addAbs(const BigInteger& a, const BigInteger& b);
     static BigInteger subtractAbs(const BigInteger& a, const BigInteger& b);
+
+    // Multiplication algorithms
+    static BigInteger gradeSchoolMultiply(const BigInteger& a, const BigInteger& b);
+    static BigInteger karatsubaMultiply(const BigInteger& a, const BigInteger& b);
+    static BigInteger multiplySwitchAlgorithm(const BigInteger& a, const BigInteger& b);
+
+    static BigInteger factorialRecursive(const BigInteger& a, const BigInteger& b, bool verbose);
+
 };

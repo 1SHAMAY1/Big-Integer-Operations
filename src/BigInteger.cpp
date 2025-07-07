@@ -4,6 +4,8 @@
 #include <iomanip>
 #include <cctype>
 #include <cmath>
+#include <sstream>
+#include <future>
 
 const long long BigInteger::BASE;
 const int BigInteger::BASE_DIGITS;
@@ -33,24 +35,45 @@ void BigInteger::removeLeadingZeros() {
         isNegative = false;
 }
 
-// Factorial
+// Recursive helper: factorial(n) = fact(a, b)
+BigInteger BigInteger::factorialRecursive(const BigInteger& a, const BigInteger& b, bool verbose) {
+    if (a > b) return BigInteger(1);
+    if (a == b) {
+        if (verbose && compareAbs(b, BigInteger(5000)) > 0)
+            std::cout << "Multiplying: " << a << "\n";
+        return a;
+    }
+    if (b == a + BigInteger(1)) {
+        if (verbose && compareAbs(b, BigInteger(5000)) > 0)
+            std::cout << "Multiplying: " << a << " * " << b << "\n";
+        return a * b;
+    }
+
+    // Use multithreading for large ranges
+    BigInteger threshold(128);
+    if (b - a > threshold) {
+        BigInteger mid = (a + b) / BigInteger(2);
+        auto left_future = std::async(std::launch::async, factorialRecursive, a, mid, verbose);
+        BigInteger right = factorialRecursive(mid + BigInteger(1), b, verbose);
+        BigInteger left = left_future.get();
+        return left * right;
+    } else {
+        BigInteger mid = (a + b) / BigInteger(2);
+        BigInteger left = factorialRecursive(a, mid, verbose);
+        BigInteger right = factorialRecursive(mid + BigInteger(1), b, verbose);
+        return left * right;
+    }
+}
+
+// Fast public factorial
 BigInteger BigInteger::factorial() const {
     if (isNegative)
         throw std::invalid_argument("Factorial of negative number is undefined.");
-    /**/if (*this > BigInteger("10000"))
-        throw std::overflow_error("Factorial too large to compute.");
-
-    BigInteger result(1);
-    BigInteger counter(1);
-    BigInteger one(1);
-
-    while (counter <= *this) {
-        result = result * counter;
-        counter = counter + one;
-    }
-
-    return result;
+    if (*this == BigInteger(0) || *this == BigInteger(1))
+        return BigInteger(1);
+    return factorialRecursive(BigInteger(1), *this, true);
 }
+
 
 // GCD
 BigInteger BigInteger::gcd(const BigInteger& other) const {
@@ -165,23 +188,63 @@ BigInteger BigInteger::operator-() const {
     return result;
 }
 
-// Multiplication
-BigInteger BigInteger::operator*(const BigInteger& other) const {
+// Multiplication algorithms
+BigInteger BigInteger::gradeSchoolMultiply(const BigInteger& a, const BigInteger& b) {
     BigInteger result;
-    result.blocks.assign(blocks.size() + other.blocks.size(), 0);
-
-    for (size_t i = 0; i < blocks.size(); ++i) {
+    result.blocks.assign(a.blocks.size() + b.blocks.size(), 0);
+    for (size_t i = 0; i < a.blocks.size(); ++i) {
         long long carry = 0;
-        for (size_t j = 0; j < other.blocks.size() || carry; ++j) {
-            long long cur = result.blocks[i + j] +
-                           blocks[i] * 1LL * (j < other.blocks.size() ? other.blocks[j] : 0) +
-                           carry;
+        for (size_t j = 0; j < b.blocks.size() || carry; ++j) {
+            long long cur = result.blocks[i + j] + a.blocks[i] * 1LL * (j < b.blocks.size() ? b.blocks[j] : 0) + carry;
             result.blocks[i + j] = static_cast<long long>(cur % BASE);
             carry = static_cast<long long>(cur / BASE);
         }
     }
-
     result.removeLeadingZeros();
+    return result;
+}
+
+BigInteger BigInteger::karatsubaMultiply(const BigInteger& a, const BigInteger& b) {
+    // Base case: use grade-school for small numbers
+    size_t n = std::max(a.blocks.size(), b.blocks.size());
+    if (n <= 32) return gradeSchoolMultiply(a, b);
+
+    size_t m = n / 2;
+    // Split a and b
+    BigInteger aLow, aHigh, bLow, bHigh;
+    aLow.blocks.assign(a.blocks.begin(), a.blocks.begin() + std::min(m, a.blocks.size()));
+    aHigh.blocks.assign(a.blocks.begin() + std::min(m, a.blocks.size()), a.blocks.end());
+    bLow.blocks.assign(b.blocks.begin(), b.blocks.begin() + std::min(m, b.blocks.size()));
+    bHigh.blocks.assign(b.blocks.begin() + std::min(m, b.blocks.size()), b.blocks.end());
+    aLow.removeLeadingZeros(); aHigh.removeLeadingZeros();
+    bLow.removeLeadingZeros(); bHigh.removeLeadingZeros();
+
+    BigInteger z0 = karatsubaMultiply(aLow, bLow);
+    BigInteger z2 = karatsubaMultiply(aHigh, bHigh);
+    BigInteger aLowHigh = aLow + aHigh;
+    BigInteger bLowHigh = bLow + bHigh;
+    BigInteger z1 = karatsubaMultiply(aLowHigh, bLowHigh) - z0 - z2;
+
+    // Shift z2 by 2*m, z1 by m
+    z2.blocks.insert(z2.blocks.begin(), 2 * m, 0);
+    z1.blocks.insert(z1.blocks.begin(), m, 0);
+
+    BigInteger result = z2 + z1 + z0;
+    result.removeLeadingZeros();
+    return result;
+}
+
+BigInteger BigInteger::multiplySwitchAlgorithm(const BigInteger& a, const BigInteger& b) {
+    size_t n = std::max(a.blocks.size(), b.blocks.size());
+    if (n <= 32) {
+        return gradeSchoolMultiply(a, b);
+    } else {
+        return karatsubaMultiply(a, b);
+    }
+}
+
+BigInteger BigInteger::operator*(const BigInteger& other) const {
+    BigInteger result = multiplySwitchAlgorithm(*this, other);
     result.isNegative = isNegative != other.isNegative;
     return result;
 }
@@ -262,4 +325,28 @@ std::ostream& operator<<(std::ostream& os, const BigInteger& num) {
         os << std::setw(BigInteger::BASE_DIGITS) << std::setfill('0') << num.blocks[i];
 
     return os;
+}
+
+std::string BigInteger::factorialProcessString() const {
+    if (isNegative)
+        return "Factorial of negative number is undefined.";
+    BigInteger twenty(20);
+    if (*this > twenty) {
+        std::ostringstream oss;
+        oss << "Factorial of " << *this << ": Too large to display process.";
+        return oss.str();
+    }
+    std::ostringstream oss;
+    oss << *this << "! = ";
+    BigInteger result(1);
+    BigInteger counter(1);
+    BigInteger one(1);
+    while (counter <= *this) {
+        oss << counter;
+        if (counter < *this) oss << " * ";
+        result = result * counter;
+        counter = counter + one;
+    }
+    oss << " = " << result;
+    return oss.str();
 }
