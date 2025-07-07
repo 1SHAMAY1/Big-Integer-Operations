@@ -7,6 +7,16 @@
 #include <sstream>
 #include <future>
 
+// Detect GCC version (e.g., MinGW 6.3.0 => 60300)
+#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+
+#if GCC_VERSION >= 80000
+    #define ENABLE_MULTITHREADING
+    #pragma message("\u2705 Multithreading enabled: GCC version >= 8.0.0")
+#else
+    #pragma message("\u26a0\ufe0f Multithreading disabled: GCC version < 8.0.0")
+#endif
+
 const long long BigInteger::BASE;
 const int BigInteger::BASE_DIGITS;
 
@@ -35,8 +45,7 @@ void BigInteger::removeLeadingZeros() {
         isNegative = false;
 }
 
-// Recursive helper: factorial(n) = fact(a, b)
-BigInteger BigInteger::factorialRecursive(const BigInteger& a, const BigInteger& b, bool verbose) {
+BigInteger BigInteger::factorialRecursive(const BigInteger& a, const BigInteger& b, bool verbose) const {
     if (a > b) return BigInteger(1);
     if (a == b) {
         if (verbose && compareAbs(b, BigInteger(5000)) > 0)
@@ -49,23 +58,29 @@ BigInteger BigInteger::factorialRecursive(const BigInteger& a, const BigInteger&
         return a * b;
     }
 
-    // Use multithreading for large ranges
     BigInteger threshold(128);
     if (b - a > threshold) {
         BigInteger mid = (a + b) / BigInteger(2);
-        auto left_future = std::async(std::launch::async, factorialRecursive, a, mid, verbose);
-        BigInteger right = factorialRecursive(mid + BigInteger(1), b, verbose);
+#ifdef ENABLE_MULTITHREADING
+        auto left_future = std::async(std::launch::async, [=]() {
+            return this->factorialRecursive(a, mid, verbose);
+        });
+        BigInteger right = this->factorialRecursive(mid + BigInteger(1), b, verbose);
         BigInteger left = left_future.get();
         return left * right;
+#else
+        BigInteger left = this->factorialRecursive(a, mid, verbose);
+        BigInteger right = this->factorialRecursive(mid + BigInteger(1), b, verbose);
+        return left * right;
+#endif
     } else {
         BigInteger mid = (a + b) / BigInteger(2);
-        BigInteger left = factorialRecursive(a, mid, verbose);
-        BigInteger right = factorialRecursive(mid + BigInteger(1), b, verbose);
+        BigInteger left = this->factorialRecursive(a, mid, verbose);
+        BigInteger right = this->factorialRecursive(mid + BigInteger(1), b, verbose);
         return left * right;
     }
 }
 
-// Fast public factorial
 BigInteger BigInteger::factorial() const {
     if (isNegative)
         throw std::invalid_argument("Factorial of negative number is undefined.");
@@ -73,7 +88,6 @@ BigInteger BigInteger::factorial() const {
         return BigInteger(1);
     return factorialRecursive(BigInteger(1), *this, true);
 }
-
 
 // GCD
 BigInteger BigInteger::gcd(const BigInteger& other) const {
@@ -325,28 +339,4 @@ std::ostream& operator<<(std::ostream& os, const BigInteger& num) {
         os << std::setw(BigInteger::BASE_DIGITS) << std::setfill('0') << num.blocks[i];
 
     return os;
-}
-
-std::string BigInteger::factorialProcessString() const {
-    if (isNegative)
-        return "Factorial of negative number is undefined.";
-    BigInteger twenty(20);
-    if (*this > twenty) {
-        std::ostringstream oss;
-        oss << "Factorial of " << *this << ": Too large to display process.";
-        return oss.str();
-    }
-    std::ostringstream oss;
-    oss << *this << "! = ";
-    BigInteger result(1);
-    BigInteger counter(1);
-    BigInteger one(1);
-    while (counter <= *this) {
-        oss << counter;
-        if (counter < *this) oss << " * ";
-        result = result * counter;
-        counter = counter + one;
-    }
-    oss << " = " << result;
-    return oss.str();
 }

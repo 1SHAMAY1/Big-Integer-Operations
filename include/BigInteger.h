@@ -37,10 +37,10 @@ public:
     friend std::ostream& operator<<(std::ostream& os, const BigInteger& num);
 
 private:
-    static const long long BASE = 1000000000LL; // 10^9
+    static const long long BASE = 1000000000LL;
     static const int BASE_DIGITS = 9;
 
-    std::vector<long long> blocks;  // Least significant block first
+    std::vector<long long> blocks;
     bool isNegative;
 
     void removeLeadingZeros();
@@ -48,11 +48,9 @@ private:
     static BigInteger addAbs(const BigInteger& a, const BigInteger& b);
     static BigInteger subtractAbs(const BigInteger& a, const BigInteger& b);
 
-    // Multiplication algorithms
     static BigInteger gradeSchoolMultiply(const BigInteger& a, const BigInteger& b);
     static BigInteger karatsubaMultiply(const BigInteger& a, const BigInteger& b);
     static BigInteger multiplySwitchAlgorithm(const BigInteger& a, const BigInteger& b);
 
-    static BigInteger factorialRecursive(const BigInteger& a, const BigInteger& b, bool verbose);
-
+    BigInteger factorialRecursive(const BigInteger& a, const BigInteger& b, bool verbose) const;
 };

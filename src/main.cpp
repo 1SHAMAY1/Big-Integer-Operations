@@ -56,18 +56,6 @@ void printOperations(const BigInteger& a, const BigInteger& b) {
     std::cout << "\n===== Extra Operations =====\n";
 
     try {
-        std::cout << "Factorial of a: " << a.factorial() << "\n";
-    } catch (const std::exception& e) {
-        std::cout << "[ERROR] a.factorial(): " << e.what() << "\n";
-    }
-
-    try {
-        std::cout << "Factorial of b: " << b.factorial() << "\n";
-    } catch (const std::exception& e) {
-        std::cout << "[ERROR] b.factorial(): " << e.what() << "\n";
-    }
-
-    try {
         std::cout << "Is a prime? " << (a.isPrime() ? "Yes" : "No") << "\n";
     } catch (const std::exception& e) {
         std::cout << "[ERROR] a.isPrime(): " << e.what() << "\n";
@@ -83,6 +71,18 @@ void printOperations(const BigInteger& a, const BigInteger& b) {
         std::cout << "GCD(a, b): " << a.gcd(b) << "\n";
     } catch (const std::exception& e) {
         std::cout << "[ERROR] GCD: " << e.what() << "\n";
+    }
+
+    try {
+        std::cout << "Factorial of a: " << a.factorial() << "\n";
+    } catch (const std::exception& e) {
+        std::cout << "[ERROR] a.factorial(): " << e.what() << "\n";
+    }
+
+    try {
+        std::cout << "Factorial of b: " << b.factorial() << "\n";
+    } catch (const std::exception& e) {
+        std::cout << "[ERROR] b.factorial(): " << e.what() << "\n";
     }
 }
 
